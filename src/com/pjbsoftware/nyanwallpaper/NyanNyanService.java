@@ -36,6 +36,7 @@ public class NyanNyanService extends WallpaperService {
 	 */
 	@Override
 	public Engine onCreateEngine() {
+//		android.os.Debug.waitForDebugger();
 		try {
 			return new NyanEngine();
 		} catch (IOException e) {
