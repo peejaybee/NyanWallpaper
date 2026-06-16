@@ -6,6 +6,7 @@ import java.io.InputStream;
 import android.graphics.Canvas;
 import android.graphics.Movie;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.service.wallpaper.WallpaperService;
 import android.util.Log;
@@ -21,7 +22,7 @@ import android.view.SurfaceHolder;
  */
 public class NyanNyanService extends WallpaperService {
 	static final String TAG = "NYAN";
-	static final Handler mNyanHandler = new Handler();
+	private final Handler mNyanHandler = new Handler(Looper.getMainLooper());
 
 	/**
 	 * @see android.service.wallpaper.WallpaperService#onCreate()
@@ -53,26 +54,17 @@ public class NyanNyanService extends WallpaperService {
 		float mScaleX;
 		float mScaleY;
 		int mWhen = 0;
-		long mStart;
 
 		NyanEngine() throws IOException {
-			InputStream is = getResources().openRawResource(R.raw.nyan);
-			if (is != null) {
-				try {
-					mNyan = Movie.decodeStream(is);
-					mNyanDuration = mNyan.duration();
-				} finally {
-					is.close();
+			try (InputStream is = getResources().openRawResource(R.raw.nyan)) {
+				mNyan = Movie.decodeStream(is);
+				if (mNyan == null) {
+					throw new IOException("Unable to decode R.raw.nyan");
 				}
-			} else {
-				throw new IOException("Unable to open R.raw.nyan");
+				mNyanDuration = mNyan.duration();
 			}
 
-			mNyanNyan = new Runnable() {
-				public void run() {
-					drawFrame();
-				}
-			};
+			mNyanNyan = this::drawFrame;
 		}
 
 		@Override
@@ -118,11 +110,12 @@ public class NyanNyanService extends WallpaperService {
 		void drawFrame() {
 			//not even going to try to start at the beginning --- it loops
 			//so why do math every frame just to get the first loop perfect?
-			mWhen = (int) (SystemClock.uptimeMillis() % mNyanDuration);
+			if (mNyanDuration > 0) {
+				mWhen = (int) (SystemClock.uptimeMillis() % mNyanDuration);
+			}
 			SurfaceHolder surfaceHolder = getSurfaceHolder();
-			Canvas canvas = null;
+			Canvas canvas = surfaceHolder.lockCanvas();
 			try {
-				canvas = surfaceHolder.lockCanvas();
 				if (canvas != null) {
 					drawImage(canvas);
 				}
